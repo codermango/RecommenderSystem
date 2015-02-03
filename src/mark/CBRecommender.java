@@ -185,7 +185,16 @@ public class CBRecommender {
 		// 计算标签的TF-IDF
 		ArrayList<Double> tfidfVector = getTFIDF(userPreferenceVector);
 		
-		return null;
+		// 剔除向量空间标签为0的电影，返回新电影列表
+		ArrayList<Movie> relevantMovies = getRelevantMovies(tfidfVector);
+		
+		// 获取relevantMovies中电影和TF-IDF进行余弦相似计算后的列表
+		HashMap<String, Double> cosValues = getCosValues(relevantMovies, tfidfVector);
+		
+		// 以value排序，取得前20个电影，作为推荐电影
+		ArrayList<String> recommendedMovieId = getRecommendedMovieId(cosValues, numOfRecommendedMovies);
+		
+		return recommendedMovieId;
 	}
 	
 	
