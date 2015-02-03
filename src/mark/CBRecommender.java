@@ -173,6 +173,22 @@ public class CBRecommender {
 
 
 	
+	/**
+	 * 重构recommend函数，使其更为通用，只接收经过计算后的用户喜好向量。
+	 * 通常情况下，userPreferenceVector可是是用户喜好列表中电影的标签的总和向量，如[2, 4, 6, 8, 2]
+	 * @param userPreferenceVector 经过计算后的用户喜好向量
+	 * @param numOfRecommendedMovies 需要推荐的电影数量
+	 * @return 返回推荐的电影的id
+	 */
+	public ArrayList<String> recommend2(ArrayList<Integer> userPreferenceVector, int numOfRecommendedMovies) {
+		
+		// 计算标签的TF-IDF
+		ArrayList<Double> tfidfVector = getTFIDF(userPreferenceVector);
+		
+		return null;
+	}
+	
+	
 	
 	
 	
