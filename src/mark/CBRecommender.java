@@ -16,12 +16,12 @@ import org.json.JSONObject;
 
 public class CBRecommender {
 
-	public static HashMap<String, Movie> moviesHash = new HashMap<String, Movie>();
-	public static ArrayList<Movie> allMovieList = new ArrayList<Movie>();
+	public HashMap<String, Movie> moviesHash = new HashMap<String, Movie>();
+	public ArrayList<Movie> allMovieList = new ArrayList<Movie>(); 
 
 	// ==========================================================================================================================
 	public CBRecommender() {
-
+		
 		try {
 			BufferedReader br = new BufferedReader(new FileReader("data/movie/movies.json"));
 
@@ -64,49 +64,7 @@ public class CBRecommender {
 
 	}
 
-	// ==========================================================================================================================
-	public static void main(String[] args) {
-		// System.out.println(9/950.0);
-		CBRecommender cbr = new CBRecommender();
 
-		User user1 = new User();
-		user1.setLikedMovies(cbr.getTestData(50));
-
-		ArrayList<String> recommendedMoviesId = cbr.recommend(user1.getLikedMovies());
-		
-		System.out.println("Recommended movies:");
-		for(String item: recommendedMoviesId) {
-			Movie movie = moviesHash.get(item);
-			ArrayList<Genre> ownedGenres = getMovieOwnedGenres(movie);
-			
-			String genres = "";
-			for(Genre genre: ownedGenres) {
-				genres += genre.getGenreName();
-			}
-			
-			System.out.println(movie.getMovieId()+" : "+movie.getMovieName() + "===" + genres);
-			
-		}
-	}
-
-	// ==========================================================================================================================
-	/**
-	 * 给一个电影，返回该电影拥有的电影标签
-	 * @param movie
-	 * @return
-	 */
-	private static ArrayList<Genre> getMovieOwnedGenres(Movie movie) {
-		
-		ArrayList<Genre> genres = movie.getMovieGenres();
-		ArrayList<Genre> ownedGenres = new ArrayList<Genre>();
-		for(int i=0; i<genres.size(); i++) {
-			if(genres.get(i).isOwned()) {
-				ownedGenres.add(genres.get(i));
-			}
-		}
-		
-		return ownedGenres;
-	}
 
 	// ==========================================================================================================================
 	/**
@@ -137,61 +95,30 @@ public class CBRecommender {
 	 * @param userLikedList 用户的电影喜好列表
 	 * @return 返回推荐的电影的id列表
 	 */
-	public ArrayList<String> recommend(ArrayList<Movie> userLikedList) {
-		// 把userLikedList中的Movie的genre各项相加
-		ArrayList<Integer> sumGenreVector = new ArrayList<Integer>();
-
-		sumGenreVector = getSumOfGenreVector(userLikedList);
-		System.out.println(sumGenreVector);
-
-		// 获取[0, 9, 8, 3, 6, 16, 10, 1, 27, 5, 0, 3, 1, 4, 14, 3, 10, 1, 0]这种向量的百分比
-		int numOfLikedMovies = userLikedList.size();
-		ArrayList<Double> sumGenreVectorPercent = getSumGenreVectorPercent(
-				sumGenreVector, numOfLikedMovies);
-		System.out.println(sumGenreVectorPercent);
-
-		// 计算标签的TF-IDF
-		ArrayList<Double> tfidfVector = getTFIDF(userLikedList);
-		System.out.println(tfidfVector);
-		System.out.println(getSumOfGenreVector(allMovieList));
-		System.out.println("===================================================");
-
-		// 剔除向量空间标签为0的电影，返回新电影列表
-		ArrayList<Movie> relevantMovies = getRelevantMovies(tfidfVector);
-		System.out.println(relevantMovies.size());
-
-		// 获取relevantMovies中电影和TF-IDF进行余弦相似计算后的列表
-		HashMap<String, Double> cosValues = getCosValues(relevantMovies,
-				tfidfVector);
-		//System.out.println(cosValues);
-
-		// 以value排序，取得前20个电影，作为推荐电影
-		ArrayList<String> recommendedMovieId = getRecommendedMovieId(cosValues);
-		
-		return recommendedMovieId;
-	}
-
-
-	
 	/**
 	 * 重构recommend函数，使其更为通用，只接收经过计算后的用户喜好向量。
 	 * 通常情况下，userPreferenceVector可是是用户喜好列表中电影的标签的总和向量，如[2, 4, 6, 8, 2]
 	 * @param userPreferenceVector 经过计算后的用户喜好向量
 	 * @param numOfRecommendedMovies 需要推荐的电影数量
+	 * @param totalNumOfGenreInLikedMovies 用户喜欢的电影中，Genre的总和
+	 * @param totalGenreInAllMovies 所有电影的Genre总和
 	 * @return 返回推荐的电影的id
 	 */
-	public ArrayList<String> recommend2(ArrayList<Integer> userPreferenceVector, int numOfRecommendedMovies) {
+	public ArrayList<String> recommend(ArrayList<Integer> userPreferenceVector, 
+			int numOfRecommendedMovies, 
+			int totalNumOfGenreInLikedMovies, 
+			long totalGenreInAllMovies) {
 		
 		// 计算标签的TF-IDF
-		ArrayList<Double> tfidfVector = getTFIDF(userPreferenceVector);
+		ArrayList<Double> tfidfVector = getTFIDF(userPreferenceVector,  totalNumOfGenreInLikedMovies, totalGenreInAllMovies);
 		
 		// 剔除向量空间标签为0的电影，返回新电影列表
-		ArrayList<Movie> relevantMovies = getRelevantMovies(tfidfVector);
+		ArrayList<Movie> relevantMovies = getRelevantMovies(tfidfVector, allMovieList);
 		
 		// 获取relevantMovies中电影和TF-IDF进行余弦相似计算后的列表
 		HashMap<String, Double> cosValues = getCosValues(relevantMovies, tfidfVector);
 		
-		// 以value排序，取得前20个电影，作为推荐电影
+		// 以value排序，取得前numOfRecommendedMovies个电影，作为推荐电影
 		ArrayList<String> recommendedMovieId = getRecommendedMovieId(cosValues, numOfRecommendedMovies);
 		
 		return recommendedMovieId;
@@ -202,9 +129,10 @@ public class CBRecommender {
 	/**
 	 * 
 	 * @param cosValues 每个电影的id和对应的余弦值
+	 * @param numOfRecommendedMovies 需要推荐电影的个数
 	 * @return 返回推荐的电影的id列表
 	 */
-	private ArrayList<String> getRecommendedMovieId(HashMap<String, Double> cosValues) {
+	private ArrayList<String> getRecommendedMovieId(HashMap<String, Double> cosValues, int numOfRecommendedMovies) {
 
 		List<Map.Entry<String, Double>> list = new ArrayList<Map.Entry<String, Double>>(
 				cosValues.entrySet());
@@ -222,7 +150,7 @@ public class CBRecommender {
 		});
 
 		ArrayList<String> recommendedMovieId = new ArrayList<String>();
-		for (int i = 0; i < 20; i++) {
+		for (int i = 0; i < numOfRecommendedMovies; i++) {
 			Entry<String, Double> entry = list.get(i);
 			recommendedMovieId.add(entry.getKey());
 			System.out.println("id:"+entry.getKey()+"===value:"+entry.getValue());
@@ -274,10 +202,11 @@ public class CBRecommender {
 	/**
 	 * 去除包含tfidf中为0的标签的电影
 	 * @param ifidfVector
+	 * @param allMovieList 
 	 * @return 
 	 */
-	private static ArrayList<Movie> getRelevantMovies(
-			ArrayList<Double> ifidfVector) {
+	private ArrayList<Movie> getRelevantMovies(
+			ArrayList<Double> ifidfVector, ArrayList<Movie> allMovieList) {
 		ArrayList<Integer> irrelevantGenreId = new ArrayList<Integer>();
 		ArrayList<Movie> relevantMovies = allMovieList;
 
@@ -308,29 +237,13 @@ public class CBRecommender {
 	 * @param userLikedList
 	 * @return
 	 */
-	private ArrayList<Double> getTFIDF(ArrayList<Movie> userLikedList) {
+	private ArrayList<Double> getTFIDF(ArrayList<Integer> userPreferenceVector, int totalNumOfGenreInLikedMovies, long totalGenreInAllMovies) {
 
-		ArrayList<Integer> numOfGenreInLikedMovies = getSumOfGenreVector(userLikedList); // 所有标签在50个电影中出现的次数
 		ArrayList<Integer> numOfGenreInAllMovies = getSumOfGenreVector(allMovieList); // 所有标签在所有电影中出现的次数
+		ArrayList<Integer> numOfGenreInLikedMovies = userPreferenceVector;
 
-		// 获取50个电影的genre总数
-		int totalNumOfGenreInLikedMovies = 0;
-		for (int i = 0; i < userLikedList.size(); i++) {
-			Movie movie = userLikedList.get(i);
-			ArrayList<Genre> genre = movie.getMovieGenres();
-			totalNumOfGenreInLikedMovies += genre.size();
-		}
-
-		// 获取所有电影的genre总数
-		long totalGenreInAllMovies = 0;
-		for (int i = 0; i < allMovieList.size(); i++) {
-			Movie movie = allMovieList.get(i);
-			ArrayList<Genre> genre = movie.getMovieGenres();
-			totalGenreInAllMovies += genre.size();
-		}
-
-		System.out.println("50: " + totalNumOfGenreInLikedMovies + "\nAll: "
-				+ totalGenreInAllMovies);
+		System.out.println("用户喜好列表中Genre的总数：" + totalNumOfGenreInLikedMovies);
+		System.out.println("所有电影中Genre总数：" + totalGenreInAllMovies);
 
 		ArrayList<Double> tfidfVector = new ArrayList<Double>();
 		for (int i = 0; i < numOfGenreInLikedMovies.size(); i++) {
@@ -351,23 +264,6 @@ public class CBRecommender {
 		return tfidfVector;
 	}
 
-	// ==========================================================================================================================
-	/**
-	 * 计算GenreVector百分比
-	 * @param sumGenreVector
-	 * @param numOfLikedMovies
-	 * @return
-	 */
-	private ArrayList<Double> getSumGenreVectorPercent(
-			ArrayList<Integer> sumGenreVector, int numOfLikedMovies) {
-
-		ArrayList<Double> result = new ArrayList<Double>();
-		for (int i = 0; i < sumGenreVector.size(); i++) {
-			double p = sumGenreVector.get(i) / (double) numOfLikedMovies;
-			result.add(p);
-		}
-		return result;
-	}
 
 	// ==========================================================================================================================
 	/**
@@ -375,7 +271,7 @@ public class CBRecommender {
 	 * @param userLikedList
 	 * @return
 	 */
-	private static ArrayList<Integer> getSumOfGenreVector(ArrayList<Movie> userLikedList) {
+	private ArrayList<Integer> getSumOfGenreVector(ArrayList<Movie> userLikedList) {
 
 		//以第一个电影的标签值初始化
 		ArrayList<Integer> sumVector = getGenreVectorFromMovie(userLikedList.get(0));
@@ -396,7 +292,7 @@ public class CBRecommender {
 	 * @param list2
 	 * @return
 	 */
-	private static ArrayList<Integer> addTwoArrayList(ArrayList<Integer> list1,
+	private ArrayList<Integer> addTwoArrayList(ArrayList<Integer> list1,
 			ArrayList<Integer> list2) {
 		ArrayList<Integer> result = new ArrayList<Integer>();
 		for (int i = 0; i < list1.size(); i++) {
@@ -411,7 +307,7 @@ public class CBRecommender {
 	 * @param movie a movie instance
 	 * @return return like this {1,0,1,1,1,0}
 	 */
-	private static ArrayList<Integer> getGenreVectorFromMovie(Movie movie) {
+	private ArrayList<Integer> getGenreVectorFromMovie(Movie movie) {
 		ArrayList<Integer> genreVector = new ArrayList<Integer>();
 		ArrayList<Genre> genreList = movie.getMovieGenres();
 		for (int i = 0; i < genreList.size(); i++) {
@@ -427,18 +323,6 @@ public class CBRecommender {
 		return genreVector;
 	}
 
-	// ==========================================================================================================================
-	/**
-	 * 生成测试数据
-	 * @param num the number of liked movie a user owned
-	 * @return return the Movie list
-	 */
-	public ArrayList<Movie> getTestData(int num) {
-		ArrayList<Movie> testData = new ArrayList<Movie>();
-		for (int i = 1; i <= num; i++) {
-			testData.add(moviesHash.get(String.valueOf(i)));
-		}
-		return testData;
-	}
+	
 
 }

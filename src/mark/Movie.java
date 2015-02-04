@@ -45,7 +45,49 @@ public class Movie {
 	}
 
 	
+	public int getNumOfGenres() {
+		int num = 0;
+		for(Genre genre: movieGenres) {
+			if(genre.isOwned()) {
+				num += 1;
+			}
+		}
+		return num;
+	}
 	
-	
+	public String getGenres() {
+		String genres = "";
+		for(Genre genre: movieGenres) {
+			if(genre.isOwned()) {
+				genres += genre.getGenreName() + " ";
+			}
+		}
+		return genres;
+	}
 	
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

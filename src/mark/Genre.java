@@ -54,5 +54,18 @@ public class Genre {
 		this.isOwned = isOwned;
 	}
 	
-	
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
