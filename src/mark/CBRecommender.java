@@ -68,7 +68,7 @@ public class CBRecommender {
 
 	// ==========================================================================================================================
 	/**
-	 * userLikedList必须遵循以下格式：
+	 * userLikedList为以下格式：
 	 * {"genres":[{"genre_weight":1,"is_owned":false,"genre_name":"unknown","genre_id":"0"},
 	 * 			  {"genre_weight":1,"is_owned":false,"genre_name":"Action","genre_id":"1"},
 	 *            {"genre_weight":1,"is_owned":true,"genre_name":"Adventure","genre_id":"2"},
@@ -163,11 +163,10 @@ public class CBRecommender {
 	/**
 	 * 
 	 * @param relevantMovies
-	 * @param ifidfVector
+	 * @param tfidfVector
 	 * @return 每个相关电影和用户的喜好向量做余弦，返回电影id和相应余弦值的pair
 	 */
-	private HashMap<String, Double> getCosValues(
-			ArrayList<Movie> relevantMovies, ArrayList<Double> ifidfVector) {
+	private HashMap<String, Double> getCosValues(ArrayList<Movie> relevantMovies, ArrayList<Double> tfidfVector) {
 
 		HashMap<String, Double> cosValues = new HashMap<String, Double>();
 
@@ -178,14 +177,14 @@ public class CBRecommender {
 			// 计算余弦值
 			double num1 = 0;// num1=a1*b1+a2*b2+a3*b3
 			double num2 = 0;// num2=sqrt(a1^2+a2^2+a3^2) * sqrt(b1^2+b2^2+b3^2)
-			for (int j = 0; j < ifidfVector.size(); j++) {
-				num1 += ifidfVector.get(j) * genreVector.get(j);
+			for (int j = 0; j < tfidfVector.size(); j++) {
+				num1 += tfidfVector.get(j) * genreVector.get(j);
 			}
 
 			double tmp1 = 0;
 			double tmp2 = 0;
-			for (int j = 0; j < ifidfVector.size(); j++) {
-				tmp1 += Math.pow(ifidfVector.get(j), 2);
+			for (int j = 0; j < tfidfVector.size(); j++) {
+				tmp1 += Math.pow(tfidfVector.get(j), 2);
 				tmp2 += Math.pow(genreVector.get(j), 2);
 			}
 			num2 = tmp1 * tmp2;
@@ -201,17 +200,17 @@ public class CBRecommender {
 	// ==========================================================================================================================
 	/**
 	 * 去除包含tfidf中为0的标签的电影
-	 * @param ifidfVector
-	 * @param allMovieList 
-	 * @return 
+	 * @param tfidfVector 根据用户喜好列表计算后的TF-IDF向量
+	 * @param allMovieList 所有电影的列表
+	 * @return 返回去除标签数为0的那些标签后剩下的电影
 	 */
-	private ArrayList<Movie> getRelevantMovies(
-			ArrayList<Double> ifidfVector, ArrayList<Movie> allMovieList) {
+	private ArrayList<Movie> getRelevantMovies(ArrayList<Double> tfidfVector, ArrayList<Movie> allMovieList) {
+		
 		ArrayList<Integer> irrelevantGenreId = new ArrayList<Integer>();
 		ArrayList<Movie> relevantMovies = allMovieList;
 
-		for (int i = 0; i < ifidfVector.size(); i++) {
-			if (ifidfVector.get(i) == 0.0) {
+		for (int i = 0; i < tfidfVector.size(); i++) {
+			if (tfidfVector.get(i) == 0.0) {
 				irrelevantGenreId.add(i);
 			}
 		}
@@ -234,8 +233,10 @@ public class CBRecommender {
 	// ==========================================================================================================================
 	/**
 	 * 根据用户喜好向量，计算TF-IDF
-	 * @param userLikedList
-	 * @return
+	 * @param userPreferenceVector 用户喜好列表
+	 * @param totalNumOfGenreInLikedMovies 用户喜好列表中genre的总数
+	 * @param totalGenreInAllMovies 所有电影中genre总数
+	 * @return 返回TF-IDF向量
 	 */
 	private ArrayList<Double> getTFIDF(ArrayList<Integer> userPreferenceVector, int totalNumOfGenreInLikedMovies, long totalGenreInAllMovies) {
 
